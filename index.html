@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise AI Token Economics Calculator</title>
+    <!-- Chart.js CDN for visual rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary-color: #0077b5; /* LinkedIn Blue style matching */
+            --bg-color: #f3f6f8;
+            --card-bg: #ffffff;
+            --text-color: #1d2226;
+            --border-color: #e0e0e0;
+        }
+
+        body {
+            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .calculator-container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            max-width: 900px;
+            width: 100%;
+            padding: 30px;
+            box-sizing: border-box;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            margin-top: 0;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 10px;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .control-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+            accent-color: var(--primary-color);
+        }
+
+        .value-display {
+            font-family: monospace;
+            font-size: 1.1em;
+            font-weight: bold;
+            width: 100px;
+            text-align: right;
+        }
+
+        .results-panel {
+            background-color: #f8fafc;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px dashed var(--primary-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .metric-highlight {
+            font-size: 2em;
+            font-weight: 800;
+            color: #059669; /* Success Green */
+            margin: 10px 0;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 250px;
+            width: 100%;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="calculator-container">
+    <h2>Interactive Token Economics & ROI Calculator</h2>
+    <p>Adjust the sliders below to see how architectural optimizations impact your monthly enterprise LLM expenditures.</p>
+    
+    <div class="grid-layout">
+        <!-- Controls Column -->
+        <div class="controls-column">
+            <div class="control-group">
+                <label for="volume">Monthly Request Volume</label>
+                <div class="slider-wrapper">
+                    <input type="range" id="volume" min="10000" max="5000000" step="10000" value="1000000">
+                    <span class="value-display" id="volume-val">1,000,000</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="routing">Intelligent Routing Allocation %</label>
+                <p style="font-size: 0.85em; margin: -5px 0 10px 0; color: #666;">Percentage of lightweight traffic automatically triaged to low-cost mini models.</p>
+                <div class="slider-wrapper">
+                    <input type="range" id="routing" min="0" max="100" step="5" value="0">
+                    <span class="value-display" id="routing-val">0%</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label for="caching">Prompt Cache Hit Rate %</label>
+                <p style="font-size: 0.85em; margin: -5px 0 10px 0; color: #666;">Percentage of input tokens served directly via cached server contexts (50% cheaper).</p>
+                <div class="slider-wrapper">
+                    <input type="range" id="caching" min="0" max="100" step="5" value="0">
+                    <span class="value-display" id="caching-val">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Output Visualizations Column -->
+        <div class="results-column">
+            <div class="results-panel">
+                <div>
+                    <strong style="text-transform: uppercase; font-size: 0.85em; color: #666;">Estimated Monthly Savings</strong>
+                    <div class="metric-highlight" id="savings-display">$0.00</div>
+                    <p id="percentage-display" style="margin: 0; font-weight: 600; color: #334155;">0% Cost Reduction</p>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="costChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Industry Baselines mapped from article metrics
+    const FRONTIER_INPUT_COST = 5.00 / 1000000;  // $5 per Million
+    const FRONTIER_OUTPUT_COST = 15.00 / 1000000; // $15 per Million
+    
+    const LIGHTWEIGHT_INPUT_COST = 0.25 / 1000000; // $0.25 per Million
+    const LIGHTWEIGHT_OUTPUT_COST = 0.75 / 1000000; // $0.75 per Million
+
+    // Average transaction parameters per request
+    const AVG_INPUT_TOKENS = 2000;
+    const AVG_OUTPUT_TOKENS = 500;
+
+    // DOM Elements
+    const volSlider = document.getElementById('volume');
+    const routeSlider = document.getElementById('routing');
+    const cacheSlider = document.getElementById('caching');
+
+    const volVal = document.getElementById('volume-val');
+    const routeVal = document.getElementById('routing-val');
+    const cacheVal = document.getElementById('caching-val');
+    
+    const savingsDisplay = document.getElementById('savings-display');
+    const percentDisplay = document.getElementById('percentage-display');
+
+    // Chart initialization
+    const ctx = document.getElementById('costChart').getContext('2d');
+    let costChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Unoptimized Base', 'TokenOps Optimized'],
+            datasets: [{
+                label: 'Monthly Cost ($)',
+                data: [0, 0],
+                backgroundColor: ['#ef4444', '#0077b5'],
+                borderWidth: 1,
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    function calculateCosts() {
+        const volume = parseInt(volSlider.value);
+        const routingPct = parseInt(routeSlider.value) / 100;
+        const cachingPct = parseInt(cacheSlider.value) / 100;
+
+        // Formatter adjustments
+        volVal.innerText = volume.toLocaleString();
+        routeVal.innerText = routeSlider.value + '%';
+        cacheVal.innerText = cacheSlider.value + '%';
+
+        // 1. Calculate base unoptimized cost (100% Frontier Models, No Cache)
+        const baseInputCost = volume * AVG_INPUT_TOKENS * FRONTIER_INPUT_COST;
+        const baseOutputCost = volume * AVG_OUTPUT_TOKENS * FRONTIER_OUTPUT_COST;
+        const totalBaseCost = baseInputCost + baseOutputCost;
+
+        // 2. Calculate optimized cost based on sliders
+        const routedVolume = volume * routingPct;
+        const frontierVolume = volume * (1 - routingPct);
+
+        // Inputs costs (applying cache savings to input tokens only)
+        const frontierInputBase = frontierVolume * AVG_INPUT_TOKENS * FRONTIER_INPUT_COST;
+        const frontierInputCached = frontierInputBase * cachingPct * 0.5; // Cache is 50% off
+        const frontierInputUncached = frontierInputBase * (1 - cachingPct);
+        const finalFrontierInput = frontierInputCached + frontierInputUncached;
+
+        const lightweightInputBase = routedVolume * AVG_INPUT_TOKENS * LIGHTWEIGHT_INPUT_COST;
+        const lightweightInputCached = lightweightInputBase * cachingPct * 0.5;
+        const lightweightInputUncached = lightweightInputBase * (1 - cachingPct);
+        const finalLightweightInput = lightweightInputCached + lightweightInputUncached;
+
+        // Output costs (No caching benefits apply to output generations)
+        const finalFrontierOutput = frontierVolume * AVG_OUTPUT_TOKENS * FRONTIER_OUTPUT_COST;
+        const finalLightweightOutput = routedVolume * AVG_OUTPUT_TOKENS * LIGHTWEIGHT_OUTPUT_COST;
+
+        const totalOptimizedCost = finalFrontierInput + finalLightweightInput + finalFrontierOutput + finalLightweightOutput;
+        
+        // 3. UI Metrics Adjustments
+        const totalSavings = Math.max(0, totalBaseCost - totalOptimizedCost);
+        const savingsPercent = totalBaseCost > 0 ? (totalSavings / totalBaseCost) * 100 : 0;
+
+        savingsDisplay.innerText = '$' + totalSavings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        percentDisplay.innerText = `${savingsPercent.toFixed(0)}% Cost Reduction`;
+
+        // Update visual charts
+        costChart.data.datasets[0].data = [totalBaseCost.toFixed(2), totalOptimizedCost.toFixed(2)];
+        costChart.update();
+    }
+
+    // Attach listeners
+    volSlider.addEventListener('input', calculateCosts);
+    routeSlider.addEventListener('input', calculateCosts);
+    cacheSlider.addEventListener('input', calculateCosts);
+
+    // Initial run
+    calculateCosts();
+</script>
+
+</body>
+</html>
