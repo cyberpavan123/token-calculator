@@ -1,269 +1,351 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise AI Token Economics Calculator</title>
-    <!-- Chart.js CDN for visual rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --primary-color: #0077b5; /* LinkedIn Blue style matching */
-            --bg-color: #f3f6f8;
-            --card-bg: #ffffff;
-            --text-color: #1d2226;
-            --border-color: #e0e0e0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Token Economics Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body {
-            font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #f3f6f8;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
 
-        .calculator-container {
-            background-color: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            max-width: 900px;
-            width: 100%;
-            padding: 30px;
-            box-sizing: border-box;
-        }
+    .card {
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+      max-width: 780px;
+      width: 100%;
+      padding: 28px 32px 32px;
+    }
 
-        h2 {
-            color: var(--primary-color);
-            margin-top: 0;
-            border-bottom: 2px solid var(--bg-color);
-            padding-bottom: 10px;
-        }
+    .card-header { margin-bottom: 6px; }
+    .card-header h1 { font-size: 18px; font-weight: 600; color: #0a66c2; }
+    .card-header p { font-size: 13px; color: #666; margin-top: 4px; line-height: 1.5; }
 
-        .grid-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-top: 20px;
-        }
+    .presets {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0 22px;
+      align-items: center;
+    }
+    .presets span { font-size: 12px; color: #888; }
+    .preset-btn {
+      font-size: 12px;
+      padding: 5px 13px;
+      border-radius: 20px;
+      border: 1px solid #d0d0d0;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .preset-btn:hover { background: #f0f4f8; border-color: #aaa; }
+    .preset-btn.active { background: #e8f4ee; border-color: #1D9E75; color: #0a5c3e; font-weight: 600; }
 
-        @media (max-width: 768px) {
-            .grid-layout {
-                grid-template-columns: 1fr;
-            }
-        }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: start;
+    }
 
-        .control-group {
-            margin-bottom: 25px;
-        }
+    @media (max-width: 600px) {
+      .card { padding: 20px 18px 24px; }
+      .layout { grid-template-columns: 1fr; gap: 24px; }
+      .donut-wrap { margin: 0 auto; }
+    }
 
-        label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
+    .slider-block { margin-bottom: 18px; }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+    .slider-label span { font-size: 13px; color: #444; }
+    .slider-label strong { font-size: 13px; font-weight: 600; color: #111; }
+    .slider-label small { font-size: 11px; color: #999; margin-left: 4px; font-weight: 400; }
 
-        .slider-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
+    input[type=range] {
+      width: 100%;
+      accent-color: #0a66c2;
+      height: 4px;
+      cursor: pointer;
+    }
 
-        input[type="range"] {
-            flex-grow: 1;
-            accent-color: var(--primary-color);
-        }
+    .cost-breakdown {
+      border-top: 1px solid #eee;
+      margin-top: 20px;
+      padding-top: 16px;
+    }
+    .cost-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .cost-row span { color: #666; }
+    .cost-row strong { color: #111; }
+    .cost-row.savings { border-top: 1px solid #eee; padding-top: 10px; margin-top: 4px; }
+    .cost-row.savings span { color: #444; font-weight: 500; }
+    .cost-row.savings strong { color: #1D9E75; font-size: 15px; font-weight: 700; }
 
-        .value-display {
-            font-family: monospace;
-            font-size: 1.1em;
-            font-weight: bold;
-            width: 100px;
-            text-align: right;
-        }
+    .right-col { display: flex; flex-direction: column; align-items: center; gap: 16px; }
 
-        .results-panel {
-            background-color: #f8fafc;
-            border-radius: 8px;
-            padding: 20px;
-            border: 1px dashed var(--primary-color);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
+    .donut-wrap {
+      position: relative;
+      width: 190px;
+      height: 190px;
+    }
+    .donut-center {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+    .donut-center .big { font-size: 34px; font-weight: 700; color: #111; line-height: 1; }
+    .donut-center .sub { font-size: 12px; color: #888; margin-top: 3px; }
 
-        .metric-highlight {
-            font-size: 2em;
-            font-weight: 800;
-            color: #059669; /* Success Green */
-            margin: 10px 0;
-        }
+    .narrative {
+      font-size: 13px;
+      color: #555;
+      text-align: center;
+      max-width: 230px;
+      line-height: 1.65;
+      min-height: 56px;
+    }
+    .narrative strong { color: #1D9E75; }
 
-        .chart-container {
-            position: relative;
-            height: 250px;
-            width: 100%;
-            margin-top: 15px;
-        }
-    </style>
+    .legend {
+      display: flex;
+      gap: 16px;
+      font-size: 12px;
+      color: #666;
+    }
+    .legend-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+
+    .footer {
+      margin-top: 20px;
+      padding-top: 14px;
+      border-top: 1px solid #eee;
+      font-size: 11px;
+      color: #aaa;
+      line-height: 1.6;
+    }
+  </style>
 </head>
 <body>
 
-<div class="calculator-container">
-    <h2>Interactive Token Economics & ROI Calculator</h2>
-    <p>Adjust the sliders below to see how architectural optimizations impact your monthly enterprise LLM expenditures.</p>
-    
-    <div class="grid-layout">
-        <!-- Controls Column -->
-        <div class="controls-column">
-            <div class="control-group">
-                <label for="volume">Monthly Request Volume</label>
-                <div class="slider-wrapper">
-                    <input type="range" id="volume" min="10000" max="5000000" step="10000" value="1000000">
-                    <span class="value-display" id="volume-val">1,000,000</span>
-                </div>
-            </div>
+<div class="card">
+  <div class="card-header">
+    <h1>LLM Token Economics Calculator</h1>
+    <p>Estimate how intelligent routing and prompt caching reduce your monthly enterprise LLM spend.</p>
+  </div>
 
-            <div class="control-group">
-                <label for="routing">Intelligent Routing Allocation %</label>
-                <p style="font-size: 0.85em; margin: -5px 0 10px 0; color: #666;">Percentage of lightweight traffic automatically triaged to low-cost mini models.</p>
-                <div class="slider-wrapper">
-                    <input type="range" id="routing" min="0" max="100" step="5" value="0">
-                    <span class="value-display" id="routing-val">0%</span>
-                </div>
-            </div>
+  <div class="presets">
+    <span>Scenario:</span>
+    <button class="preset-btn" id="p0">No optimization</button>
+    <button class="preset-btn" id="p1">Conservative</button>
+    <button class="preset-btn active" id="p2">Recommended</button>
+    <button class="preset-btn" id="p3">Aggressive</button>
+  </div>
 
-            <div class="control-group">
-                <label for="caching">Prompt Cache Hit Rate %</label>
-                <p style="font-size: 0.85em; margin: -5px 0 10px 0; color: #666;">Percentage of input tokens served directly via cached server contexts (50% cheaper).</p>
-                <div class="slider-wrapper">
-                    <input type="range" id="caching" min="0" max="100" step="5" value="0">
-                    <span class="value-display" id="caching-val">0%</span>
-                </div>
-            </div>
+  <div class="layout">
+    <div class="left-col">
+
+      <div class="slider-block">
+        <div class="slider-label">
+          <span>Monthly requests</span>
+          <strong id="o-vol">1M</strong>
         </div>
+        <input type="range" id="s-vol" min="10000" max="5000000" step="10000" value="1000000" aria-label="Monthly request volume">
+      </div>
 
-        <!-- Output Visualizations Column -->
-        <div class="results-column">
-            <div class="results-panel">
-                <div>
-                    <strong style="text-transform: uppercase; font-size: 0.85em; color: #666;">Estimated Monthly Savings</strong>
-                    <div class="metric-highlight" id="savings-display">$0.00</div>
-                    <p id="percentage-display" style="margin: 0; font-weight: 600; color: #334155;">0% Cost Reduction</p>
-                </div>
-                
-                <div class="chart-container">
-                    <canvas id="costChart"></canvas>
-                </div>
-            </div>
+      <div class="slider-block">
+        <div class="slider-label">
+          <span>Routed to mini models <small>lightweight traffic</small></span>
+          <strong id="o-route">40%</strong>
         </div>
+        <input type="range" id="s-route" min="0" max="100" step="5" value="40" aria-label="Percentage of requests routed to mini models">
+      </div>
+
+      <div class="slider-block">
+        <div class="slider-label">
+          <span>Prompt cache hit rate <small>input tokens at 50% cost</small></span>
+          <strong id="o-cache">30%</strong>
+        </div>
+        <input type="range" id="s-cache" min="0" max="100" step="5" value="30" aria-label="Prompt cache hit rate">
+      </div>
+
+      <div class="cost-breakdown">
+        <div class="cost-row">
+          <span>Unoptimized base cost</span>
+          <strong id="base-val">—</strong>
+        </div>
+        <div class="cost-row">
+          <span>Optimized cost</span>
+          <strong id="opt-val">—</strong>
+        </div>
+        <div class="cost-row savings">
+          <span>Monthly savings</span>
+          <strong id="save-val">—</strong>
+        </div>
+      </div>
     </div>
+
+    <div class="right-col">
+      <div class="donut-wrap">
+        <canvas id="donutChart" role="img" aria-label="Donut chart showing percentage of LLM cost saved"></canvas>
+        <div class="donut-center">
+          <span class="big" id="pct-big">0%</span>
+          <span class="sub">saved</span>
+        </div>
+      </div>
+
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#1D9E75;"></span>Saved</span>
+        <span><span class="legend-dot" style="background:#E1F5EE;"></span>Remaining</span>
+      </div>
+
+      <p class="narrative" id="narrative" aria-live="polite">Adjust the sliders or pick a scenario above.</p>
+    </div>
+  </div>
+
+  <p class="footer">
+    Assumes frontier model pricing at $5/M input · $15/M output tokens. Mini model at $0.25/M input · $0.75/M output.
+    Avg. 2,000 input + 500 output tokens per request. For illustrative purposes — actual savings vary by provider and workload.
+  </p>
 </div>
 
 <script>
-    // Industry Baselines mapped from article metrics
-    const FRONTIER_INPUT_COST = 5.00 / 1000000;  // $5 per Million
-    const FRONTIER_OUTPUT_COST = 15.00 / 1000000; // $15 per Million
-    
-    const LIGHTWEIGHT_INPUT_COST = 0.25 / 1000000; // $0.25 per Million
-    const LIGHTWEIGHT_OUTPUT_COST = 0.75 / 1000000; // $0.75 per Million
+  const FRONTIER_IN  = 5.00  / 1e6;
+  const FRONTIER_OUT = 15.00 / 1e6;
+  const LIGHT_IN     = 0.25  / 1e6;
+  const LIGHT_OUT    = 0.75  / 1e6;
+  const AVG_IN = 2000, AVG_OUT = 500;
 
-    // Average transaction parameters per request
-    const AVG_INPUT_TOKENS = 2000;
-    const AVG_OUTPUT_TOKENS = 500;
+  const fmtMoney = n => {
+    if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1e3) return '$' + Math.round(n / 1e3) + 'K';
+    return '$' + Math.round(n);
+  };
+  const fmtVol = n => {
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+    if (n >= 1e3) return Math.round(n / 1e3) + 'K';
+    return n.toLocaleString();
+  };
 
-    // DOM Elements
-    const volSlider = document.getElementById('volume');
-    const routeSlider = document.getElementById('routing');
-    const cacheSlider = document.getElementById('caching');
+  const sVol   = document.getElementById('s-vol');
+  const sRoute = document.getElementById('s-route');
+  const sCache = document.getElementById('s-cache');
 
-    const volVal = document.getElementById('volume-val');
-    const routeVal = document.getElementById('routing-val');
-    const cacheVal = document.getElementById('caching-val');
-    
-    const savingsDisplay = document.getElementById('savings-display');
-    const percentDisplay = document.getElementById('percentage-display');
-
-    // Chart initialization
-    const ctx = document.getElementById('costChart').getContext('2d');
-    let costChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Unoptimized Base', 'TokenOps Optimized'],
-            datasets: [{
-                label: 'Monthly Cost ($)',
-                data: [0, 0],
-                backgroundColor: ['#ef4444', '#0077b5'],
-                borderWidth: 1,
-                borderRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true } }
-        }
-    });
-
-    function calculateCosts() {
-        const volume = parseInt(volSlider.value);
-        const routingPct = parseInt(routeSlider.value) / 100;
-        const cachingPct = parseInt(cacheSlider.value) / 100;
-
-        // Formatter adjustments
-        volVal.innerText = volume.toLocaleString();
-        routeVal.innerText = routeSlider.value + '%';
-        cacheVal.innerText = cacheSlider.value + '%';
-
-        // 1. Calculate base unoptimized cost (100% Frontier Models, No Cache)
-        const baseInputCost = volume * AVG_INPUT_TOKENS * FRONTIER_INPUT_COST;
-        const baseOutputCost = volume * AVG_OUTPUT_TOKENS * FRONTIER_OUTPUT_COST;
-        const totalBaseCost = baseInputCost + baseOutputCost;
-
-        // 2. Calculate optimized cost based on sliders
-        const routedVolume = volume * routingPct;
-        const frontierVolume = volume * (1 - routingPct);
-
-        // Inputs costs (applying cache savings to input tokens only)
-        const frontierInputBase = frontierVolume * AVG_INPUT_TOKENS * FRONTIER_INPUT_COST;
-        const frontierInputCached = frontierInputBase * cachingPct * 0.5; // Cache is 50% off
-        const frontierInputUncached = frontierInputBase * (1 - cachingPct);
-        const finalFrontierInput = frontierInputCached + frontierInputUncached;
-
-        const lightweightInputBase = routedVolume * AVG_INPUT_TOKENS * LIGHTWEIGHT_INPUT_COST;
-        const lightweightInputCached = lightweightInputBase * cachingPct * 0.5;
-        const lightweightInputUncached = lightweightInputBase * (1 - cachingPct);
-        const finalLightweightInput = lightweightInputCached + lightweightInputUncached;
-
-        // Output costs (No caching benefits apply to output generations)
-        const finalFrontierOutput = frontierVolume * AVG_OUTPUT_TOKENS * FRONTIER_OUTPUT_COST;
-        const finalLightweightOutput = routedVolume * AVG_OUTPUT_TOKENS * LIGHTWEIGHT_OUTPUT_COST;
-
-        const totalOptimizedCost = finalFrontierInput + finalLightweightInput + finalFrontierOutput + finalLightweightOutput;
-        
-        // 3. UI Metrics Adjustments
-        const totalSavings = Math.max(0, totalBaseCost - totalOptimizedCost);
-        const savingsPercent = totalBaseCost > 0 ? (totalSavings / totalBaseCost) * 100 : 0;
-
-        savingsDisplay.innerText = '$' + totalSavings.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        percentDisplay.innerText = `${savingsPercent.toFixed(0)}% Cost Reduction`;
-
-        // Update visual charts
-        costChart.data.datasets[0].data = [totalBaseCost.toFixed(2), totalOptimizedCost.toFixed(2)];
-        costChart.update();
+  const donut = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [0, 100],
+        backgroundColor: ['#1D9E75', '#E1F5EE'],
+        borderWidth: 0,
+        hoverOffset: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '72%',
+      animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { enabled: false } }
     }
+  });
 
-    // Attach listeners
-    volSlider.addEventListener('input', calculateCosts);
-    routeSlider.addEventListener('input', calculateCosts);
-    cacheSlider.addEventListener('input', calculateCosts);
+  function compute() {
+    const vol  = parseInt(sVol.value);
+    const rPct = parseInt(sRoute.value) / 100;
+    const cPct = parseInt(sCache.value) / 100;
+    const base = vol * (AVG_IN * FRONTIER_IN + AVG_OUT * FRONTIER_OUT);
+    const routed   = vol * rPct;
+    const frontier = vol * (1 - rPct);
+    const fIn  = frontier * AVG_IN * FRONTIER_IN;
+    const fInC = fIn * cPct * 0.5 + fIn * (1 - cPct);
+    const lIn  = routed * AVG_IN * LIGHT_IN;
+    const lInC = lIn * cPct * 0.5 + lIn * (1 - cPct);
+    const opt  = fInC + frontier * AVG_OUT * FRONTIER_OUT + lInC + routed * AVG_OUT * LIGHT_OUT;
+    const savings = Math.max(0, base - opt);
+    const pct = base > 0 ? Math.round((savings / base) * 100) : 0;
+    return { base, opt, savings, pct, vol, rPct, cPct };
+  }
 
-    // Initial run
-    calculateCosts();
+  function buildNarrative(d) {
+    if (d.pct === 0) return 'Adjust the sliders or pick a scenario above.';
+    const monthly = fmtMoney(d.savings);
+    const annual  = fmtMoney(d.savings * 12);
+    const parts = [];
+    if (d.rPct > 0) parts.push('routing ' + Math.round(d.rPct * 100) + '% of traffic to mini models');
+    if (d.cPct > 0) parts.push('a ' + Math.round(d.cPct * 100) + '% cache hit rate');
+    return 'With ' + parts.join(' and ') + ', you save ' + monthly + '/mo\u00a0— that\'s ' + annual + '/year on ' + fmtVol(d.vol) + ' requests.';
+  }
+
+  function update() {
+    const d = compute();
+    document.getElementById('o-vol').textContent   = fmtVol(parseInt(sVol.value));
+    document.getElementById('o-route').textContent = sRoute.value + '%';
+    document.getElementById('o-cache').textContent = sCache.value + '%';
+    document.getElementById('base-val').textContent = fmtMoney(d.base);
+    document.getElementById('opt-val').textContent  = fmtMoney(d.opt);
+    document.getElementById('save-val').textContent = fmtMoney(d.savings);
+    document.getElementById('pct-big').textContent  = d.pct + '%';
+    document.getElementById('narrative').textContent = buildNarrative(d);
+    donut.data.datasets[0].data = [d.pct, Math.max(0, 100 - d.pct)];
+    donut.update();
+  }
+
+  const presets = [
+    { vol: 1000000, route: 0,  cache: 0  },
+    { vol: 1000000, route: 20, cache: 15 },
+    { vol: 1000000, route: 40, cache: 30 },
+    { vol: 2000000, route: 65, cache: 50 },
+  ];
+
+  presets.forEach(function(p, i) {
+    document.getElementById('p' + i).addEventListener('click', function() {
+      sVol.value   = p.vol;
+      sRoute.value = p.route;
+      sCache.value = p.cache;
+      document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
+      document.getElementById('p' + i).classList.add('active');
+      update();
+    });
+  });
+
+  [sVol, sRoute, sCache].forEach(function(s) {
+    s.addEventListener('input', function() {
+      document.querySelectorAll('.preset-btn').forEach(function(b) { b.classList.remove('active'); });
+      update();
+    });
+  });
+
+  update();
 </script>
 
 </body>
